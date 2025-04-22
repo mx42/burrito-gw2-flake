@@ -33,16 +33,7 @@
         libudev-zero
       ];
 
-      runScript = "${src}/burrito.x86_64";
-
-      # dummy
-      # to see whats I'm getting
-      #installPhase = ''
-      #  mkdir -p $out/bin
-      #  cp -r $src $out/bin
-      #  cp $src/burrito.x86_64 $out/bin/burrito-gw2
-      #  chmod +x $out/bin/burrito-gw2
-      #'';
+      runScript = "${self}/script.sh ${src}";
     };
 
     devShell.${system} = pkgs.mkShell {
