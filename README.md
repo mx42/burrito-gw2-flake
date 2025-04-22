@@ -29,7 +29,14 @@ to solve this, as I understand it, I need to use `makeWrapper` in `nativeBuildIn
 burrito repo is now working on automated github workflows to create a CI system, so I can have a sneak peek at the build process when they will finish it, because now I can't find any clues from the repo inself. I don't know how godot projects works in this regard.
 
 
-# Additional note
 
-Running `nix develop` (or having a direnv active) allows to run `burrito-gw2` directly, however it doesn't quite work because burrito invokes `./xml_converter`, a fix is to copy this to the current folder.
+# Additional notes
+
+Running `nix develop` (or using direnv) allows to run `burrito-gw2`, however it doesn't quite work in stand-alone because burrito invokes `./xml_converter`, a fix is to copy this file (found in burrito release) to the current folder.
+
+It currently involves building a FHS env to satisfy burrito dependencies.
+
+I'll explore building from sources from within Nix.
+
+Also I'm planning to try and add some config options like the GW2 path so the .dll could be symlinked in it.
 
