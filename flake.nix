@@ -5,46 +5,111 @@
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-unstable";
   };
 
-  outputs = { self, nixpkgs, ... }: 
-  let
-    system = "x86_64-linux";
-    pkgs = nixpkgs.legacyPackages.${system};
-  in 
-  {
-
-    packages.${system}.default = pkgs.stdenv.mkDerivation {
-      name = "burrito-gw2";
-
-      buildInputs = with pkgs; [
-      ];
-
-      # will fetch github source code
-      # src = pkgs.fetchFromGitHub {
-      #   owner = "AsherGlick";
-      #   repo = "Burrito";
-      #   # to find out rev view tags on github
-      #   # also can check yourself with
-      #   # https://github.com/AsherGlick/Burrito/archive/refs/tags/alpha-1.4.zip
-      #   rev = "alpha-1.4";
-      #   # to find sha256
-      #   # nix-prefetch-url --unpack https://github.com/AsherGlick/Burrito/archive/refs/tags/alpha-1.4.zip --type sha256
-      #   sha256 = "164wjr7y339s67fk1b3kyz4jdx0j64qx77mkzz09wdizi7idphf3";
-      # };
+  outputs =
+    { self, nixpkgs, ... }:
+    let
+      system = "x86_64-linux";
+      pkgs = nixpkgs.legacyPackages.${system};
       src = pkgs.fetchzip {
-        url = "https://github.com/AsherGlick/Burrito/releases/download/alpha-1.4/Burrito_Linux.zip";
-        # because zip don't have a root directory
-        stripRoot=false;
-        # nix-prefetch-url --unpack <url> --type sha256
-        sha256 = "0a9f8dby8b3pn36nz0plf2kyjijlr0f6zc7vb8ym044ivrq97ss9";
+        url = "https://github.com/AsherGlick/Burrito/releases/download/burrito-1.0.0/burrito-1.0.0.zip";
+        stripRoot = false;
+        sha256 = "10iz1w3vz1881i8h898v2ankhfhcsi439jh8b38z14jpfzbv2m6x";
+      };
+      deps = with pkgs; [
+        stdenv.cc.cc.lib
+        glibc
+        gcc
+        xorg.libXcursor
+        xorg.libX11
+        xorg.libXinerama
+        xorg.libXext
+        xorg.libXrandr
+        xorg.libXrender
+        xorg.libXi
+        libGL
+        libudev-zero
+      ];
+    in
+    {
+      packages.${system} = {
+        burrito-fhs = pkgs.buildFHSUserEnv {
+          name = "burrito-gw2";
+
+          targetPkgs =
+            pkgs: with pkgs; [
+              glibc
+              xorg.libXcursor
+              xorg.libX11
+              xorg.libXinerama
+              xorg.libXext
+              xorg.libXrandr
+              xorg.libXrender
+              xorg.libXi
+              libGL
+              libudev-zero
+            ];
+
+          runScript = "${self}/script.sh ${src}";
+        };
+
+        default = self.packages.${system}.burrito;
+
+        burrito = pkgs.stdenv.mkDerivation {
+          name = "burrito";
+          version = "1.0.0";
+          src = src;
+          nativeBuildInputs = [
+            pkgs.makeWrapper
+            # pkgs.autoPatchelfHook
+          ];
+          buildInputs = deps;
+          # runtimeDependencies = deps;
+
+          # '' = {
+          description = "Burrito Guild Wars 2 overlay";
+          platforms = [ "x86_64-linux" ];
+
+          installPhase = ''
+            mkdir -p $out/bin $out/lib
+
+            # Copy the main executable
+            cp $src/burrito.x86_64 $out/bin/burrito.x86_64
+            chmod +x $out/bin/burrito.x86_64
+
+            # Copy the xml_converter
+            cp $src/xml_converter $out/bin/xml_converter
+            chmod +x $out/bin/xml_converter
+
+            # Copy the libraries
+            cp $src/*.so $out/lib/
+
+            # Patch the binary
+            # chmod +w $out/bin/burrito.x86_64
+            # patchelf --set-rpath "$out/lib:$ {pkgs.lib.makeLibraryPath deps}" $out/bin/burrito.x86_64
+            # chmod -w $out/bin/burrito.x86_64
+
+            # Create a wrapper script
+            # makeWrapper $out/bin/burrito.x86_64 $out/bin/burrito \
+            #     --set LD_LIBRARY_PATH "$out/lib:$ {pkgs.lib.makeLibraryPath deps}" \
+            #     --chdir "$out/bin"
+
+            # Create a wrapper
+            cat > $out/bin/burrito << EOF
+            #!/bin/sh
+            cd $out/bin
+            export LD_LIBRARY_PATH="$out/lib:${pkgs.lib.makeLibraryPath deps}"
+            exec ./burrito.x86_64 "\$@"
+            EOF
+
+            chmod +x $out/bin/burrito
+          '';
+        };
       };
 
-      # dummy
-      # to see whats I'm getting
-      installPhase = ''
-        mkdir -p $out/bin
-        cp -r $src $out/bin
-      '';
+      devShell.${system} = pkgs.mkShell {
+        buildInputs = [
+          self.packages.${system}.burrito-fhs
+        ];
+      };
     };
-
-  };
 }
